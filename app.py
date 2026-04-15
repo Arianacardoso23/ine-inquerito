@@ -232,7 +232,7 @@ linha_total = pd.DataFrame([{
 resumo_display = pd.concat([resumo, linha_total], ignore_index=True)
 resumo_display.columns = ["Ilha","Concelho","Agente","Total","Pontos Válidos","Pontos Inválidos",
     "Residência Habitual","Secundária/Sazonal","Vazio","Ocupados Outros Fins",
-    "Alojamento Inacessível","Outra Situação","Recusa","Agregados Inquiridos","Indivíduos Inquiridos"]
+    "Alojamento Inacessível","Outra Situação","Recusa","Agregados Inquiridos","indivíduos inquiridos"]
  
 def highlight_total(row):
     if row["Ilha"]=="TOTAL":
@@ -244,17 +244,50 @@ st.dataframe(resumo_display.style.apply(highlight_total,axis=1), use_container_w
 # ── Evolução diária por inquiridor ─────────────────────────────────────────────
 if agente_sel != "Todos":
     st.divider()
- 
+
     st.markdown("**📆 Detalhe diário**")
+
+    # 📅 ALOJAMENTOS
     det = df_filt.groupby("data_aloj").agg(
-        Total=("REFERENCIA","count"),Validos=("ponto_valido","sum"),Invalidos=("ponto_invalido","sum"),
-        Res_Habitual=("res_habitual","sum"),Secundaria=("secundaria","sum"),Vazio=("vazio","sum"),
-        Outros_Fins=("outros_fins","sum"),Inacessivel=("inacessivel","sum"),
-        Outra_Situacao=("outra_situacao","sum"),Recusa=("recusa","sum"),Agregados=("agreg_inquiridos","sum"),
-    ).reset_index().sort_values("data_aloj",ascending=False)
-    det.columns=["Data","Total","Válidos","Inválidos","Res. Habitual","Secundária","Vazio","Outros Fins","Inacessível","Outra Situação","Recusa","Agregados"]
+        Total=("REFERENCIA","count"),
+        Validos=("ponto_valido","sum"),
+        Invalidos=("ponto_invalido","sum"),
+        Res_Habitual=("res_habitual","sum"),
+        Secundaria=("secundaria","sum"),
+        Vazio=("vazio","sum"),
+        Outros_Fins=("outros_fins","sum"),
+        Inacessivel=("inacessivel","sum"),
+        Outra_Situacao=("outra_situacao","sum"),
+        Recusa=("recusa","sum"),
+        Agregados=("agreg_inquiridos","sum"),
+    ).reset_index()
+
+    # 📅 INDIVÍDUOS (CORRETO)
+    ind = df_ind_filt.groupby("data_ind").agg(
+        Individuos=("REFERENCIA","count")
+    ).reset_index()
+
+    # 🔗 alinhar nomes
+    ind = ind.rename(columns={"data_ind": "data_aloj"})
+
+    # 🔗 juntar (IMPORTANTE: outer)
+    det = det.merge(ind, on="data_aloj", how="outer")
+
+    # 🧹 limpar
+    det = det.fillna(0)
+
+    # ordenar
+    det = det.sort_values("data_aloj", ascending=False)
+
+    # nomes finais
+    det.columns = [
+        "Data","Total","Válidos","Inválidos","Res. Habitual",
+        "Secundária","Vazio","Outros Fins","Inacessível",
+        "Outra Situação","Recusa","Agregados","Individuos"
+    ]
+
     st.dataframe(det, use_container_width=True, hide_index=True)
- 
+
 st.divider()
  
 # ── Gráficos gerais ────────────────────────────────────────────────────────────
